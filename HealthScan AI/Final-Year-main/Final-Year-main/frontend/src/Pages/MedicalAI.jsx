@@ -19,11 +19,30 @@ import { toast } from "react-toastify";
 import api from "../api/client";
 
 const TABS = [
-  { key: "description", label: "Description", Icon: Stethoscope },
-  { key: "medication", label: "Medications", Icon: Pill },
-  { key: "precautions", label: "Precaution", Icon: CircleAlert },
-  { key: "dietNotes", label: "Diets", Icon: Salad },
+  { key: "description", label: "Description", icon: Stethoscope },
+  { key: "medication", label: "Medications", icon: Pill },
+  { key: "precautions", label: "Precaution", icon: CircleAlert },
+  { key: "dietNotes", label: "Diets", icon: Salad },
 ];
+
+// Render the tab icon through a capitalized local alias. (Destructuring an
+// uppercase property like `Icon` directly in an arrow-function parameter is
+// miscounted by ESLint v9's core no-unused-vars — see eslint#19958.)
+function TabButton({ tab, active, onSelect }) {
+  const Icon = tab.icon;
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(tab.key)}
+      className={`flex justify-center items-center font-semibold rounded-xl w-full p-2.5 text-white ${
+        active ? "bg-green-600" : "bg-green-400 hover:bg-green-500"
+      }`}
+    >
+      <Icon className="w-5 h-5 text-white mx-2" />
+      {tab.label}
+    </button>
+  );
+}
 
 const MedicalAI = () => {
   const [form, setForm] = useState({
@@ -249,18 +268,13 @@ const MedicalAI = () => {
                 )}
 
                 <div className="grid grid-cols-2 gap-2">
-                  {TABS.map(({ key, label, Icon }) => (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => setActiveTab(key)}
-                      className={`flex justify-center items-center font-semibold rounded-xl w-full p-2.5 text-white ${
-                        activeTab === key ? "bg-green-600" : "bg-green-400 hover:bg-green-500"
-                      }`}
-                    >
-                      <Icon className="w-5 h-5 text-white mx-2" />
-                      {label}
-                    </button>
+                  {TABS.map((tab) => (
+                    <TabButton
+                      key={tab.key}
+                      tab={tab}
+                      active={activeTab === tab.key}
+                      onSelect={setActiveTab}
+                    />
                   ))}
                 </div>
 

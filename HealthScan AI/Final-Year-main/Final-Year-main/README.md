@@ -151,7 +151,10 @@ POST /api/predict
 * 🩺 Disease tracking & regional spread
 * 📃 Medical reports & prescriptions
 * 🤖 AI symptom-based disease prediction (live: `POST /api/predict` + MedicalAI page)
-* 📖 Pagination support for disease lists
+* 📖 Pagination support for disease, patient, and appointment lists
+* ⏰ Automated appointment reminder emails (24h in advance, hourly scheduler)
+* 🔔 Email confirmations on booking via SMTP (configurable in `.env`)
+* 🐳 Dockerized deployment (`docker-compose`) plus Render & Vercel blueprints
 
 ---
 
@@ -174,6 +177,25 @@ POST /api/predict
    npm install
    npm run dev                 # Vite dev server on http://localhost:5173
    ```
+
+---
+
+### 🐳 Docker & Deployment
+
+Run the entire stack (MongoDB + backend + frontend) locally with one command:
+
+```bash
+docker compose up --build
+# Frontend: http://localhost:8080   Backend API: http://localhost:5000
+```
+
+Each image is multi-stage (build → slim runtime), non-root, and health-checked. The frontend image serves the static Vite bundle through nginx, which also reverse-proxies `/api/*` to the backend so no CORS configuration is needed inside compose.
+
+**Render** — `render.yaml` blueprint provisions a Node web service for `backend/` (reads `.env.example` keys; set real secrets in the dashboard). Deploy via *New ➜ Blueprint* pointing at this repo.
+
+**Vercel** — `frontend/vercel.json` sets SPA rewrites and build settings. Import the repo, set Root Directory to `frontend/`, and define `VITE_BACKEND_URL` in project environment variables.
+
+Appointment reminders: the backend runs an hourly scheduler that emails patients ~24h before their appointment and sends a booking confirmation on creation. Configure SMTP via `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, and `EMAIL_FROM` in `backend/.env` (optional — the app starts fine without them; emails are skipped and logged).
 
 ---
 

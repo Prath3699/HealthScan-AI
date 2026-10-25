@@ -1,11 +1,9 @@
 import { PencilIcon, Save } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 
 const PatientViewCard = ({ patient, setPatientDetails }) => {
-  const [patientData, setPatientData] = useState(null);
-  useEffect(() => {
-    setPatientData(patient);
-  }, []);
+  // Lazy initial state replaces the mount-only useEffect (no stale deps).
+  const [patientData, setPatientData] = useState(patient);
   const changeHandler = (value, updateKey) => {
     setPatientData((prev) => {
       const newObj = { ...prev };

@@ -1,7 +1,7 @@
 import React from "react";
 import { Navigate } from "react-router-dom";
 import { useSelector } from "react-redux";
-import { selectAuth } from "../../redux/rootSlice";
+import { selectAuthUser } from "../../redux/selectors";
 
 const safeParse = (raw) => {
   if (!raw) return null;
@@ -14,7 +14,7 @@ const safeParse = (raw) => {
 };
 
 const RoleProtectRoute = ({ children, allowedRole }) => {
-  const { user } = useSelector(selectAuth);
+  const user = useSelector(selectAuthUser);
   // Redux is the source of truth; fall back to storage only on a fresh page load.
   const userData = user ?? safeParse(localStorage.getItem("userData"));
   if (!userData) {

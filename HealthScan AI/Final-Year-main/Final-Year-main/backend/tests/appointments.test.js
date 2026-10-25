@@ -1,46 +1,58 @@
 const request = require("supertest");
 const app = require("../server");
-const Doctor = require("../model/doctorSchema");
-const Patient = require("../model/patientSchema");
 const Appointment = require("../model/appointmentSchema");
 
-// Build a doctor available Mon-Sun 09:00-17:00 and a patient.
+// Seed users through the real registration endpoints so passwords are
+// bcrypt-hashed exactly like production (the schemas have no pre-save hook).
 const seed = async () => {
-  const days = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
-  const d = await Doctor.create({
+  const docRes = await request(app).post("/api/doctors/add").send({
     name: "Slot Doctor",
     email: "slot.doc@test.com",
-    password: "password123",
+    phone: "9876543210",
     age: 45,
     specialization: ["General"],
     experience: 12,
-    availableSlots: days.map((day) => ({ day, from: "09:00", to: "17:00" })),
+    password: "password123",
+    location: { city: "Pune", state: "MH" },
   });
-  const p = await Patient.create({
+  expect(docRes.status).toBe(201);
+  const patRes = await request(app).post("/api/patients/add").send({
     name: "Slot Patient",
     email: "slot.pat@test.com",
     password: "password123",
   });
-  return { doctor: d, patient: p };
+  expect(patRes.status).toBe(201);
+  return { doctor: docRes.body.doctor, patientId: patRes.body.id };
 };
 
-const bookPayload = (doctor, patient, fromIso, toIso) => ({
+// A doctor available Mon-Sun 09:00-17:00.
+const days = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+
+const bookPayload = (doctor, patientId, fromIso, toIso) => ({
   doctorId: String(doctor._id),
-  patientId: String(patient._id),
+  patientId: String(patientId),
   day: { from: fromIso },
   time: { from: fromIso, to: toIso },
   reason: "checkup",
 });
 
 describe("Appointments", () => {
-  let doctor, patient, token;
+  let doctor, patientId, token;
 
   beforeAll(async () => {
-    ({ doctor, patient } = await seed());
+    ({ doctor, patientId } = await seed());
     const login = await request(app)
       .post("/api/login")
       .send({ email: "slot.doc@test.com", password: "password123", role: "Doctor" });
     token = login.body.token;
+    // Grant the doctor Mon-Sun 09:00-17:00 working hours via their own session.
+    for (const day of days) {
+      const slot = await request(app)
+        .post("/api/doctors/slots")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ doctorId: String(doctor._id), day, from: "09:00", to: "17:00" });
+      expect(slot.status).toBe(200);
+    }
   });
 
   test("available slots are generated inside working hours", async () => {
@@ -54,16 +66,28 @@ describe("Appointments", () => {
   });
 
   test("no slots on a non-working day", async () => {
-    const limited = await Doctor.create({
+    const limitedRes = await request(app).post("/api/doctors/add").send({
       name: "Weekday Only",
       email: "weekday@test.com",
-      password: "password123",
+      phone: "9876500000",
       age: 40,
-      availableSlots: [{ day: "Monday", from: "09:00", to: "10:00" }],
+      specialization: ["General"],
+      experience: 5,
+      password: "password123",
+      location: { city: "Pune", state: "MH" },
     });
+    expect(limitedRes.status).toBe(201);
+    const login = await request(app)
+      .post("/api/login")
+      .send({ email: "weekday@test.com", password: "password123", role: "Doctor" });
+    const slot = await request(app)
+      .post("/api/doctors/slots")
+      .set("Authorization", `Bearer ${login.body.token}`)
+      .send({ doctorId: String(limitedRes.body.doctor._id), day: "Monday", from: "09:00", to: "10:00" });
+    expect(slot.status).toBe(200);
     const res = await request(app)
       .get("/api/appointment/available-slots")
-      .query({ doctorId: String(limited._id), date: "2026-11-03" }); // Tuesday
+      .query({ doctorId: String(limitedRes.body.doctor._id), date: "2026-11-03" }); // Tuesday
     expect(res.status).toBe(200);
     expect(res.body.availableSlots).toHaveLength(0);
   });
@@ -79,7 +103,7 @@ describe("Appointments", () => {
     const res = await request(app)
       .post("/api/appointment/book")
       .set("Authorization", `Bearer ${token}`)
-      .send(bookPayload(doctor, patient, from, to));
+      .send(bookPayload(doctor, patientId, from, to));
     expect(res.status).toBe(201);
     expect(res.body.appointment.status).toBe("Scheduled");
 
@@ -95,7 +119,7 @@ describe("Appointments", () => {
     const res = await request(app)
       .post("/api/appointment/book")
       .set("Authorization", `Bearer ${token}`)
-      .send(bookPayload(doctor, patient, from, to));
+      .send(bookPayload(doctor, patientId, from, to));
     expect(res.status).toBe(409);
   });
 
@@ -105,7 +129,7 @@ describe("Appointments", () => {
     const res = await request(app)
       .post("/api/appointment/book")
       .set("Authorization", `Bearer ${token}`)
-      .send(bookPayload(doctor, patient, from, to));
+      .send(bookPayload(doctor, patientId, from, to));
     expect(res.status).toBe(400);
   });
 
@@ -165,7 +189,7 @@ describe("Appointments", () => {
     expect(res.status).toBe(200);
     expect(res.body.count).toBeGreaterThanOrEqual(1);
     for (const a of res.body.appointments) {
-      expect(String(a.patientId._id ?? a.patientId)).toBe(String(patient._id));
+      expect(String(a.patientId._id ?? a.patientId)).toBe(String(patientId));
     }
   });
 });

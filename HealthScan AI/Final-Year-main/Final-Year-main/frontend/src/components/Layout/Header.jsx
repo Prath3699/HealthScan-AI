@@ -11,12 +11,12 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { useDispatch, useSelector } from "react-redux";
 import { logoutUser } from "../../redux/authSlice";
-import { selectAuth } from "../../redux/rootSlice";
+import { selectAuthUser } from "../../redux/selectors";
 
 const NavbarComponent = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { user: token } = useSelector(selectAuth);
+  const token = useSelector(selectAuthUser);
 
   // handle logout
   const handleLogout = () => {

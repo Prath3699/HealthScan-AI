@@ -96,6 +96,25 @@ npm run dev
 | POST   | `/reports`     | Create medical report    |
 | GET    | `/reports/:id` | Get report by patient ID |
 
+#### 🤖 AI Prediction Routes
+
+| Method | Route       | Description                                                                                     |
+| ------ | ----------- | ----------------------------------------------------------------------------------------------- |
+| POST   | `/predict`  | Symptom-based disease screening (public). Ranks the disease catalog with synonym normalization, fuzzy typo matching and location-aware spread info. Returns top-5 candidates with confidence %, description, medication, precautions and diet notes. No PHI is stored. |
+
+Example request:
+
+```json
+POST /api/predict
+{
+  "patientName": "Ravi",
+  "patientAge": 29,
+  "diseaseDuration": 4,
+  "patientLocation": "Pune",
+  "patientSymptoms": "high fever, body pains, headache, red spots"
+}
+```
+
 ---
 
 ### 📦 Sample Data for Testing (Postman)
@@ -131,7 +150,7 @@ npm run dev
 * 📅 Appointment scheduling
 * 🩺 Disease tracking & regional spread
 * 📃 Medical reports & prescriptions
-* 🤖 AI prediction support (future-ready)
+* 🤖 AI symptom-based disease prediction (live: `POST /api/predict` + MedicalAI page)
 * 📖 Pagination support for disease lists
 
 ---
@@ -182,7 +201,7 @@ Security notes:
 * JWT-based authentication
 * Role-based access (admin/doctor/patient)
 * Admin dashboard (React)
-* AI diagnosis model integration
+* ML-based disease prediction model (currently rule/similarity engine; can be swapped behind `POST /api/predict`)
 
 ---
 

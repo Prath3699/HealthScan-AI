@@ -13,6 +13,7 @@ const diseaseRoutes = require("./routes/diseaseRoutes");
 const appointmentRoutes = require("./routes/appointmentRoutes");
 const loginRoutes = require("./routes/loginRoutes");
 const reportRoutes = require("./routes/reportRoutes");
+const predictionRoutes = require("./routes/predictionRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 3003;
@@ -62,6 +63,7 @@ app.use("/api/patient", patientRoutes);
 app.use("/api/disease", diseaseRoutes);
 app.use("/api/login", loginRoutes);
 app.use("/api/reports", reportRoutes);
+app.use("/api/predict", predictionRoutes);
 
 app.get("/healthz", (req, res) => {
   res.status(200).json({

@@ -1,5 +1,44 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import axios from "axios";
 import api from "../api/client";
+
+const AUTH_BASE_URL = import.meta.env.VITE_BACKEND_URL ?? "http://localhost:5000";
+
+// Shared refresh flow: exchanges the httpOnly cookie for a new access token.
+let refreshPromise = null;
+export const refreshSession = () => {
+  if (!refreshPromise) {
+    refreshPromise = axios
+      .post(`${AUTH_BASE_URL}/api/auth/refresh`, {}, { withCredentials: true })
+      .then((res) => {
+        const { token, id, _id, role } = res.data;
+        const userData = { token, id: id ?? _id, _id: _id ?? id, role };
+        localStorage.setItem("userData", JSON.stringify(userData));
+        return userData;
+      })
+      .finally(() => {
+        refreshPromise = null; // allow later retries after failure
+      });
+  }
+  return refreshPromise;
+};
+
+// LOGOUT (server-side session revocation; local state cleared by the slice)
+export const logoutUser = createAsyncThunk(
+  "auth/logoutUser",
+  async (_, { dispatch }) => {
+    try {
+      await axios.post(
+        `${AUTH_BASE_URL}/api/auth/logout`,
+        {},
+        { withCredentials: true }
+      );
+    } catch {
+      // Even if the server call fails we clear local state below.
+    }
+    dispatch(logout());
+  }
+);
 
 // LOGIN
 export const loginUser = createAsyncThunk(

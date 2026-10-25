@@ -2,6 +2,7 @@ require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
+const cookieParser = require("cookie-parser");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const dbConnect = require("./config/dbConnect");
@@ -12,6 +13,7 @@ const patientRoutes = require("./routes/patientRoutes");
 const diseaseRoutes = require("./routes/diseaseRoutes");
 const appointmentRoutes = require("./routes/appointmentRoutes");
 const loginRoutes = require("./routes/loginRoutes");
+const authRoutes = require("./routes/authRoutes");
 const reportRoutes = require("./routes/reportRoutes");
 const predictionRoutes = require("./routes/predictionRoutes");
 
@@ -21,6 +23,7 @@ const PORT = process.env.PORT || 3003;
 // --- Security & parsing middleware -------------------------------------
 app.use(helmet());
 app.use(express.json({ limit: "1mb" }));
+app.use(cookieParser());
 
 // CORS: allow an explicit comma-separated list, or reflect any origin in dev.
 const allowedOrigins = (process.env.CORS_ORIGIN || "")
@@ -35,6 +38,7 @@ app.use(
         : process.env.NODE_ENV === "production"
           ? false
           : true,
+    credentials: true, // required for the httpOnly refresh-token cookie
   })
 );
 
@@ -62,6 +66,7 @@ app.use("/api/patients", patientRoutes);
 app.use("/api/patient", patientRoutes);
 app.use("/api/disease", diseaseRoutes);
 app.use("/api/login", loginRoutes);
+app.use("/api/auth", authRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/predict", predictionRoutes);
 

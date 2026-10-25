@@ -52,7 +52,9 @@ const addDoctor = async (req, res) => {
       password: hashedPassword,
       location,
     });
-    return res.status(201).json({ success: true, doctor });
+    // never return the (hashed) password to clients
+    const { password: _pw, ...doctorSafe } = doctor.toObject();
+    return res.status(201).json({ success: true, doctor: doctorSafe });
   } catch (error) {
     return res.status(500).json({ success: false, error: error.message });
   }

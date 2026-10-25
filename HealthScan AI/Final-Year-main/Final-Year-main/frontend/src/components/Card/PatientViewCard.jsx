@@ -1,7 +1,7 @@
 import { PencilIcon, Save } from "lucide-react";
 import React, { useEffect, useState } from "react";
 
-const PatientViewCard = ({ patient, accessedBy, setPatientDetails }) => {
+const PatientViewCard = ({ patient, setPatientDetails }) => {
   const [patientData, setPatientData] = useState(null);
   useEffect(() => {
     setPatientData(patient);

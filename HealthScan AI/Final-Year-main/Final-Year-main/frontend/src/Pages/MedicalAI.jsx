@@ -11,15 +11,17 @@ import {
   UtensilsCrossed,
 } from "lucide-react";
 import React, { useState } from "react";
-import { Dropdown, DropdownItem } from "flowbite-react";
 
 const MedicalAI = () => {
-  const [patientName, setPatientName] = useState("");
-  const [patientAge, setPatientAge] = useState("");
-  const [result, setResult] = useState(null);
-  const [diseaseDuration, setDiseaseDuration] = useState("");
-  const [patientLocation, setPatientLocation] = useState("");
-  const [patientSymptoms, setPatientSymptoms] = useState("");
+  // Captures the form inputs so they survive re-renders; the values feed the
+  // upcoming AI recommendation feature (see the Predict button below).
+  const inputsRef = React.useRef({});
+  const track = (key) => (e) => {
+    inputsRef.current[key] = e.target.value;
+  };
+
+  // The AI recommendation result; populated once the prediction endpoint exists.
+  const [result] = useState(null);
   return (
     <div className="mt-3 px-4 py-3 bg-white border border-gray-200 rounded-lg">
       <div className="text-center">
@@ -41,7 +43,7 @@ const MedicalAI = () => {
                 type="text"
                 placeholder="Enter your full name"
                 required
-                onChange={(e) => setPatientName(e.target.value)}
+                onChange={track("patientName")}
                 className="w-full p-2.5 focus:outline-none rounded-r-xl"
               />
             </div>
@@ -58,7 +60,7 @@ const MedicalAI = () => {
                   type="number"
                   placeholder="Enter your age"
                   required
-                  onChange={(e) => setPatientAge(e.target.value)}
+                  onChange={track("patientAge")}
                   className="w-full p-2.5 focus:outline-none rounded-r-xl"
                 />
               </div>
@@ -74,7 +76,7 @@ const MedicalAI = () => {
                   type="number"
                   placeholder="Enter disease duration"
                   required
-                  onChange={(e) => setDiseaseDuration(e.target.value)}
+                  onChange={track("diseaseDuration")}
                   className="w-full p-2.5 focus:outline-none rounded-r-xl"
                 />
               </div>
@@ -91,7 +93,7 @@ const MedicalAI = () => {
                 type="text"
                 placeholder="Enter your location"
                 required
-                onChange={(e) => setPatientLocation(e.target.value)}
+                onChange={track("patientLocation")}
                 className="w-full p-2.5 focus:outline-none rounded-r-xl"
               />
             </div>
@@ -107,7 +109,7 @@ const MedicalAI = () => {
                 type="text"
                 placeholder="Enter your Symptoms"
                 required
-                onChange={(e) => setPatientSymptoms(e.target.value)}
+                onChange={track("patientSymptoms")}
                 className="w-full p-2.5 focus:outline-none rounded-r-xl"
               />
             </div>

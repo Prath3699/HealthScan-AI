@@ -4,7 +4,8 @@ const doctorSchema = new mongoose.Schema(
   {
     name: String,
     email: { type: String, unique: true, lowercase: true },
-    password: { type: String, required: true, minLength: 8 },
+    // select:false keeps bcrypt hashes out of every query result by default
+    password: { type: String, required: true, minlength: 8, select: false },
     phone: String,
     age: { type: Number, required: true, min: 18, max: 100 },
     specialization: [String],

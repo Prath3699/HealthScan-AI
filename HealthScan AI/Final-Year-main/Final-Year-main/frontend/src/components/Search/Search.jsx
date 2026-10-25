@@ -6,7 +6,7 @@ import {
   SearchIcon,
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import api from "../../api/client";
 import { toast } from "react-toastify";
 import DoctorViewCard from "../Card/DoctorViewCard";
 
@@ -16,7 +16,6 @@ const Search = ({ isPatientSearch = false }) => {
   const [searchResult, setSearchResult] = useState([]);
   const [locationFilter, setLocationFilter] = useState("");
   const [specializationFilter, setSpecializationFilter] = useState("");
-  const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
   useEffect(() => {
     const delayDebounce = setTimeout(() => {
@@ -39,14 +38,14 @@ const Search = ({ isPatientSearch = false }) => {
       setLoading(true);
       let res;
       if (isPatientSearch) {
-        res = await axios.get(`${API_BASE_URL}/api/patients`, {
+        res = await api.get("/api/patients", {
           params: {
             query: query,
             city: locationFilter,
           },
         });
       } else {
-        res = await axios.get(`${API_BASE_URL}/api/doctors`, {
+        res = await api.get("/api/doctors", {
           params: {
             query: query,
             city: locationFilter,

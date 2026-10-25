@@ -9,14 +9,18 @@ import {
 } from "flowbite-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import { useDispatch, useSelector } from "react-redux";
+import { logout } from "../../redux/authSlice";
+import { selectAuth } from "../../redux/rootSlice";
 
 const NavbarComponent = () => {
   const navigate = useNavigate();
-  const token = localStorage.getItem("userData");
+  const dispatch = useDispatch();
+  const { user: token } = useSelector(selectAuth);
 
   // handle logout
   const handleLogout = () => {
-    localStorage.removeItem("userData");
+    dispatch(logout());
     toast.success("Logged out successfully!", {
       position: "top-right",
       autoClose: 3000,

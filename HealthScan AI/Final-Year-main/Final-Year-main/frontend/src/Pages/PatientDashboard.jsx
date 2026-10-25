@@ -1,3 +1,5 @@
+import { useSelector } from "react-redux";
+import { selectAuth } from "../redux/rootSlice";
 import React, { useEffect, useState } from "react";
 import PatientAppointments from "../components/PatientDashboard/PatientAppointments";
 import HeaderCard from "../components/DoctorDashboard/HeaderCard";
@@ -8,7 +10,7 @@ import {
   Stethoscope,
 } from "lucide-react/dist/cjs/lucide-react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import api from "../api/client";
 import PatientViewCard from "../components/Card/PatientViewCard";
 import { toast } from 'react-toastify';
 
@@ -39,9 +41,18 @@ const patientCards = [
 const PatientDashboard = () => {
   const [patientDetails, setPatientDetails] = useState(null);
   const navigate = useNavigate();
-  const userData = JSON.parse(localStorage.getItem("userData"));
+  const { user: reduxUser } = useSelector(selectAuth);
+  // Redux is the source of truth; fall back to storage only on a fresh page load.
+  const userData =
+    reduxUser ??
+    (() => {
+      try {
+        return JSON.parse(localStorage.getItem("userData"));
+      } catch {
+        return null;
+      }
+    })();
   const patientId = userData?._id || userData?.id;
-  const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
   const handleViewMedicalHistory = () => {
     if (patientId) {
@@ -60,7 +71,7 @@ const PatientDashboard = () => {
       return;
     }
     try {
-      const res = await axios.get(`${API_BASE_URL}/api/patient/${patientId}`);
+      const res = await api.get(`/api/patient/${patientId}`);
       console.log(res.data);
       if (res.data?.success) {
         setPatientDetails(res.data?.patient);
@@ -111,7 +122,6 @@ const PatientDashboard = () => {
         <PatientViewCard
           patient={patientDetails}
           setPatientDetails={setPatientDetails}
-          accessedBy={"patient"}
         />
       )}
       <div className="flex flex-col items-center w-full">

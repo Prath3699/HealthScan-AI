@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
 import Doctor from "/IntroImage.png";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { KeyRound, Mail, User, Eye, EyeOff } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { loginUser } from "../../redux/authSlice";
+import { selectAuth } from "../../redux/rootSlice";
 import { toast } from "react-toastify";
 
 const Login = () => {
@@ -18,18 +19,19 @@ const Login = () => {
     role: "Patient",
   });
 
+  const { user } = useSelector(selectAuth);
+
   // If already logged in, redirect to dashboard
   useEffect(() => {
-    const userData = JSON.parse(localStorage.getItem("userData"));
-    if (userData) {
-      toast.info(`You are already logged in as ${userData.role}.`, {
+    if (user) {
+      toast.info(`You are already logged in as ${user.role}.`, {
         position: "top-right",
         autoClose: 3000,
         theme: "colored",
       });
-      navigate(userData.role === "Doctor" ? "/doctor" : "/patient");
+      navigate(user.role === "Doctor" ? "/doctor" : "/patient");
     }
-  }, [navigate]);
+  }, [navigate, user]);
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.id]: e.target.value });
   };

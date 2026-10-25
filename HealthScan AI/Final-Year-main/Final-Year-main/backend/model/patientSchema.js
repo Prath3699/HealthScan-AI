@@ -3,10 +3,11 @@ const mongoose = require("mongoose");
 const patientSchema = new mongoose.Schema(
   {
     name: String,
-    email: { type: String, unique: true },
+    email: { type: String, unique: true, lowercase: true, trim: true },
     phone: String,
     gender: String,
-    password: String,
+    // select:false keeps bcrypt hashes out of every query result by default
+    password: { type: String, minlength: 8, select: false },
     bloodGroup: String,
     age: Number,
     address: {

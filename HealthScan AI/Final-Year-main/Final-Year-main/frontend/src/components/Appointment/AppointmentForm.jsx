@@ -1,4 +1,4 @@
-import axios from "axios";
+import api from "../../api/client";
 import {
   Calendar,
   CalendarSearchIcon,
@@ -20,7 +20,6 @@ const AppointmentForm = ({
 }) => {
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(false);
-  const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
   const handleAppointment = async (e) => {
     e.preventDefault();
     if (!selectedDay || !selectedTime || !doctorId || !patientId) {
@@ -30,8 +29,8 @@ const AppointmentForm = ({
     }
     try {
       setLoading(true);
-      const response = await axios.post(
-        `${API_BASE_URL}/api/appointment/book`,
+      const response = await api.post(
+        "/api/appointment/book",
         {
           day: selectedDay,
           time: selectedTime,

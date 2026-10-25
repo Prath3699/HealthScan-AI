@@ -136,9 +136,44 @@ npm run dev
 
 ---
 
+### 🚀 Quick Start (Monorepo)
+
+1. **Backend** (`backend/`)
+
+   ```bash
+   cd backend
+   cp .env.example .env        # then edit MONGO_URL / JWT_SECRET
+   npm install
+   npm run dev                 # Express server on http://localhost:5000
+   ```
+
+2. **Frontend** (`frontend/`)
+
+   ```bash
+   cd frontend
+   cp .env.example .env        # VITE_BACKEND_URL=http://localhost:5000
+   npm install
+   npm run dev                 # Vite dev server on http://localhost:5173
+   ```
+
+---
+
 ### 🧪 Testing
 
-Use [Postman](https://www.postman.com/) or any REST client to test the routes.
+Automated Jest + Supertest integration tests run against an in-memory MongoDB:
+
+```bash
+cd backend
+npm test
+```
+
+They cover password leakage, duplicate-email handling, request validation, login/token issuance, protected routes, and role-based access control. You can still use [Postman](https://www.postman.com/) or any REST client for manual testing.
+
+Security notes:
+
+* Password hashes are never returned by any API (Mongoose `select: false`).
+* JWTs expire after `JWT_EXPIRES_IN` (default 2h) and are verified with role-based middleware.
+* `helmet`, rate limiting, CORS allow-list (`CLIENT_URL`), and a centralized error handler are enabled.
 
 ---
 

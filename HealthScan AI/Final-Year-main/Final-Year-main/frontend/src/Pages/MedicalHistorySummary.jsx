@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import api from "../api/client";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-const API_URL = import.meta.env.VITE_BACKEND_URL;
 
 const MedicalHistorySummary = () => {
   const [isEditingPatient, setIsEditingPatient] = useState(false);
@@ -18,8 +17,8 @@ const MedicalHistorySummary = () => {
     const fetchData = async () => {
       try {
         const [patientRes, diseaseRes] = await Promise.all([
-          axios.get(`${API_URL}/api/patient/summary/${patientId}`),
-          axios.get(`${API_URL}/api/disease/`),
+          api.get(`/api/patient/summary/${patientId}`),
+          api.get("/api/disease/"),
         ]);
 
         if (patientRes.data.success) setPatient(patientRes.data.patient);
@@ -45,8 +44,8 @@ const MedicalHistorySummary = () => {
   //  SAVE PATIENT DETAILS
   const handleSavePatient = async () => {
     try {
-      const res = await axios.put(
-        `${API_URL}/api/patient/update/${patientId}`,
+      const res = await api.put(
+        `/api/patient/update/${patientId}`,
         {
           name: patient.name,
           age: patient.age,
@@ -89,7 +88,7 @@ const MedicalHistorySummary = () => {
     }
 
     try {
-      const res = await axios.get(`${API_URL}/api/disease/${diseaseId}`);
+      const res = await api.get(`/api/disease/${diseaseId}`);
       if (res.data.success) {
         setSelectedDisease(res.data.disease);
       }
@@ -114,8 +113,8 @@ const MedicalHistorySummary = () => {
     }
 
     try {
-      const res = await axios.put(
-        `${API_URL}/api/patient/update/${patientId}`,
+      const res = await api.put(
+        `/api/patient/update/${patientId}`,
         {
           medicalHistory: {
             diseaseId: selectedDiseaseId,

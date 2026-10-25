@@ -1,6 +1,8 @@
+import { useSelector } from "react-redux";
+import { selectAuth } from "../redux/rootSlice";
 import React, { useEffect, useState } from "react";
 import DoctorIntro from "../components/Appointment/DoctorIntro";
-import axios from "axios";
+import api from "../api/client";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import AppointmentPicker from "../components/Appointment/AppointmentPicker";
@@ -10,7 +12,17 @@ const View = () => {
   const { doctorId } = useParams();
   const [loading, setLoading] = useState(true);
   const [doctorDetails, setDoctorDetails] = useState(null);
-  const userData = JSON.parse(localStorage.getItem("userData"));
+  const { user: reduxUser } = useSelector(selectAuth);
+  // Redux is the source of truth; fall back to storage only on a fresh page load.
+  const userData =
+    reduxUser ??
+    (() => {
+      try {
+        return JSON.parse(localStorage.getItem("userData"));
+      } catch {
+        return null;
+      }
+    })();
   const patientId = userData?._id || userData?.id;
   const navigate = useNavigate();
 
@@ -20,11 +32,10 @@ const View = () => {
       navigate("/");
     }
   }, []);
-  const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
   const fetchDoctorDetails = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${API_BASE_URL}/api/doctors/${doctorId}`);
+      const res = await api.get(`/api/doctors/${doctorId}`);
       console.log(res.data);
       if (res.data) {
         setDoctorDetails(res.data);

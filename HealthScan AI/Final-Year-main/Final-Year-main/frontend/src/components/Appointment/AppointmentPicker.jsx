@@ -3,16 +3,13 @@ import AppointmentDateTimeCard from "./AppointmentDateTimeCard";
 import { ModalBody, ModalHeader } from "flowbite-react";
 import { Modal } from "flowbite-react";
 import AppointmentForm from "./AppointmentForm";
-import { useSelector } from "react-redux";
-import { selectAuth, selectLoading } from "../../redux/rootSlice";
-import axios from "axios";
-import moment from "moment";
+
+import api from "../../api/client";
+import dayjs from "dayjs";
 import { Loader } from "lucide-react";
 
 const AppointmentPicker = ({ doctorId }) => {
   const [openModal, setOpenModal] = useState(false);
-  const { user } = useSelector(selectAuth);
-
   const [availableSlot, setAvailableSlot] = useState([]);
   const [timeSlots, setTimeSlots] = useState([]);
   const [selectedDay, setSelectedDay] = useState(null);
@@ -20,8 +17,6 @@ const AppointmentPicker = ({ doctorId }) => {
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [dateSlotLoader, setDateSlotLoader] = useState(false);
   const [error, setError] = useState(null);
-
-  const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
   // Fetch doctor's available days
   useEffect(() => {
@@ -45,9 +40,7 @@ const AppointmentPicker = ({ doctorId }) => {
       setAvailableSlot(true);
 
       console.log("🔍 Fetching doctor availability for:", doctorId);
-      const response = await axios.get(
-        `${API_BASE_URL}/api/doctors/${doctorId}`
-      );
+      const response = await api.get(`/api/doctors/${doctorId}`);
 
       if (response.data.availableSlots) {
         // Remove duplicate days - keep only one entry per day
@@ -93,12 +86,12 @@ const AppointmentPicker = ({ doctorId }) => {
       setTimeSlots([]);
 
       // Extract date from the selected day
-      const date = moment(day.from).format("YYYY-MM-DD");
+      const date = dayjs(day.from).format("YYYY-MM-DD");
 
       console.log("Fetching available slots for:", { doctorId, date });
 
-      const response = await axios.get(
-        `${API_BASE_URL}/api/appointment/available-slots`,
+      const response = await api.get(
+        "/api/appointment/available-slots",
         {
           params: {
             doctorId: doctorId,
@@ -143,12 +136,12 @@ const AppointmentPicker = ({ doctorId }) => {
 
   // Format date for display
   const formatDateDisplay = (dateString) => {
-    return moment(dateString).format("MMM D, YYYY");
+    return dayjs(dateString).format("MMM D, YYYY");
   };
 
   // Get day name from date
   const getDayName = (dateString) => {
-    return moment(dateString).format("dddd");
+    return dayjs(dateString).format("dddd");
   };
 
   return (

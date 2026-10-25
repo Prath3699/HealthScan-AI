@@ -1,36 +1,30 @@
 const Doctor = require("../model/doctorSchema");
-const bcrypt = require("bcryptjs");
 const Patient = require("../model/patientSchema");
-const jwt = require("jsonwebtoken");
+const bcrypt = require("bcryptjs");
+const generateToken = require("../utils/generateToken");
+const ApiError = require("../utils/ApiError");
 
 const login = async (req, res) => {
   const { email, password, role } = req.body;
-  try {
-    let user;
-    if (role == "Doctor") user = await Doctor.findOne({ email });
-    else user = await Patient.findOne({ email });
 
-    if (!user)
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
-
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch)
-      return res
-        .status(401)
-        .json({ success: false, message: "Incorrect password" });
-
-    const token = jwt.sign(
-      { id: user._id, role: role },
-      process.env.JWT_SECRET,
-      { expiresIn: "30d" }
-    );
-
-    return res.status(200).json({ success: true, token, id: user._id, role });
-  } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
+  if (!email || !password || !role) {
+    throw new ApiError(400, "email, password and role are required");
   }
+
+  // password has select:false on both schemas, so explicitly opt it in here.
+  let user;
+  if (role === "Doctor") user = await Doctor.findOne({ email }).select("+password");
+  else if (role === "Patient") user = await Patient.findOne({ email }).select("+password");
+  else throw new ApiError(400, 'role must be "Doctor" or "Patient"');
+
+  if (!user) throw new ApiError(404, "User not found");
+
+  const isMatch = await bcrypt.compare(password, user.password);
+  if (!isMatch) throw new ApiError(401, "Incorrect password");
+
+  const token = generateToken(user, role);
+
+  return res.status(200).json({ success: true, token, id: user._id, role });
 };
 
 module.exports = { login };

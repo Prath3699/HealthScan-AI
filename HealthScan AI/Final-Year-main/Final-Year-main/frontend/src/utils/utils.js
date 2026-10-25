@@ -1,15 +1,15 @@
-import moment from "moment";
+import dayjs from "dayjs";
 
 // Format date for display
 export const formatDateDisplay = (dateString) => {
-  return moment(dateString).format("MMM D, YYYY");
+  return dayjs(dateString).format("MMM D, YYYY");
 };
 
 // Get day name from date
 export const getDayName = (dateString) => {
-  return moment(dateString).format("dddd");
+  return dayjs(dateString).format("dddd");
 };
 
 export const formatTime = (dateString) => {
-  return moment(dateString).format("hh:mm A");
+  return dayjs(dateString).format("hh:mm A");
 };

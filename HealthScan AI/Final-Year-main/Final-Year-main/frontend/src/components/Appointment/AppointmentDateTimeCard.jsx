@@ -1,4 +1,4 @@
-import moment from "moment";
+import dayjs from "dayjs";
 
 const AppointmentDateTimeCard = ({
   isDate,
@@ -39,10 +39,10 @@ const AppointmentDateTimeCard = ({
         onClick={handleDateClick}
       >
         <span className="text-sm font-medium">
-          {displayText || moment(date.from).format("ddd")}
+          {displayText || dayjs(date.from).format("ddd")}
         </span>
         <span className="text-xs mt-1 opacity-80">
-          {subText || moment(date.from).format("MMM D")}
+          {subText || dayjs(date.from).format("MMM D")}
         </span>
       </div>
     );
@@ -64,7 +64,7 @@ const AppointmentDateTimeCard = ({
       title={
         !isAvailable
           ? "This slot is not available"
-          : `Book at ${moment(time.from).format("hh:mm A")}`
+          : `Book at ${dayjs(time.from).format("hh:mm A")}`
       }
     >
       <span
@@ -72,7 +72,7 @@ const AppointmentDateTimeCard = ({
           isAvailable && isSelected ? "text-white" : ""
         }`}
       >
-        {moment(time.from).format("hh:mm A")}
+        {dayjs(time.from).format("hh:mm A")}
       </span>
       {!isAvailable && <span className="text-xs mt-1">Unavailable</span>}
     </div>

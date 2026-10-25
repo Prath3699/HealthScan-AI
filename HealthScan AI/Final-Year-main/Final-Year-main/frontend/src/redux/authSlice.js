@@ -1,21 +1,20 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import axios from "axios";
-const API_URL = import.meta.env.VITE_BACKEND_URL;
+import api from "../api/client";
 
 // LOGIN
 export const loginUser = createAsyncThunk(
   "auth/loginUser",
   async ({ email, password, role }, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${API_URL}/api/login`, {
+      const response = await api.post("/api/login", {
         email,
         password,
         role,
       });
-      const { token, id, role: userRole } = response.data;
-      const userData = { token, id, role: userRole };
+      const { token, id, _id, role: userRole } = response.data;
+      const userData = { token, id: id ?? _id, _id: _id ?? id, role: userRole };
       localStorage.setItem("userData", JSON.stringify(userData));
-      return { success: true, userData };
+      return { success: true, ...userData };
     } catch (error) {
       return rejectWithValue(
         error.response?.data?.message || "Login failed. Please try again."
@@ -29,7 +28,7 @@ export const registerDoctor = createAsyncThunk(
   "auth/registerDoctor",
   async (formData, { rejectWithValue }) => {
     try {
-      const res = await axios.post(`${API_URL}/api/doctors/add`, formData);
+      const res = await api.post("/api/doctors/add", formData);
       return { success: true, data: res.data };
     } catch (err) {
       return rejectWithValue(
@@ -44,7 +43,7 @@ export const registerPatient = createAsyncThunk(
   "auth/registerPatient",
   async (formData, { rejectWithValue }) => {
     try {
-      const res = await axios.post(`${API_URL}/api/patient/add`, formData);
+      const res = await api.post("/api/patient/add", formData);
       return { success: true, data: res.data };
     } catch (err) {
       return rejectWithValue(
@@ -57,7 +56,15 @@ export const registerPatient = createAsyncThunk(
 const authSlice = createSlice({
   name: "auth",
   initialState: {
-    user: JSON.parse(localStorage.getItem("userData")) || null,
+    // Safe parse: corrupt storage must not crash the app at boot.
+    user: (() => {
+      try {
+        return JSON.parse(localStorage.getItem("userData"));
+      } catch {
+        localStorage.removeItem("userData");
+        return null;
+      }
+    })(),
     loading: false,
     error: null,
   },
@@ -88,7 +95,7 @@ const authSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(registerDoctor.fulfilled, (state, action) => {
+      .addCase(registerDoctor.fulfilled, (state) => {
         state.loading = false;
         state.error = null;
       })
@@ -101,7 +108,7 @@ const authSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(registerPatient.fulfilled, (state, action) => {
+      .addCase(registerPatient.fulfilled, (state) => {
         state.loading = false;
         state.error = null;
       })

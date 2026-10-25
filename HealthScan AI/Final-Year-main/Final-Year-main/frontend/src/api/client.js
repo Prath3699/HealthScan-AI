@@ -2,8 +2,11 @@ import axios from "axios";
 import { refreshSession } from "../redux/authSlice";
 
 // Single source of truth for the backend URL.
-// Set VITE_BACKEND_URL in your .env file (see .env.example).
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL ?? "http://localhost:5000";
+// Set VITE_BACKEND_URL in your .env file (see .env.example). On Vercel set it
+// in Project Settings -> Environment Variables; in Docker it is baked in as a
+// build arg (see frontend/Dockerfile / docker-compose.yml).
+const API_BASE_URL =
+  import.meta.env.VITE_BACKEND_URL ?? "http://localhost:5000";
 
 /**
  * Shared axios instance.

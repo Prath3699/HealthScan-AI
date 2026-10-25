@@ -5,7 +5,7 @@ import {
   MapPin,
   SearchIcon,
 } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import api from "../../api/client";
 import { toast } from "react-toastify";
 import DoctorViewCard from "../Card/DoctorViewCard";
@@ -22,13 +22,13 @@ const Search = ({ isPatientSearch = false }) => {
       console.log("called");
 
       if (query?.trim()?.length > 2) {
-        searchHandler();
+        searchHandlerRef.current();
       }
     }, 1000);
     return () => clearTimeout(delayDebounce);
   }, [query, locationFilter]);
 
-  const searchHandler = async () => {
+  const searchHandler = useCallback(async () => {
     try {
       if (query.trim()?.length < 0) {
         // toa
@@ -69,7 +69,14 @@ const Search = ({ isPatientSearch = false }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [query, locationFilter, specializationFilter, isPatientSearch]);
+
+  // Keep the latest handler in a ref so the debounce effect doesn't need it
+  // as a dependency (avoids restarting the timer on every render).
+  const searchHandlerRef = useRef(searchHandler);
+  useEffect(() => {
+    searchHandlerRef.current = searchHandler;
+  }, [searchHandler]);
 
   return (
     <div className="mt-3 w-full">

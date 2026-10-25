@@ -4,6 +4,7 @@ const {
   getAppointmentById,
   getAvailableSlots,
   getAppointmentsforthatday,
+  getUpcomingForUser,
 } = require("../controllers/appointmentController");
 
 const express = require("express");
@@ -20,6 +21,7 @@ router.get("/available-slots", asyncHandler(getAvailableSlots));
 // Everything else requires a valid token
 router.use(protect);
 
+router.get("/upcoming", asyncHandler(getUpcomingForUser));
 router.post(
   "/book",
   validate([

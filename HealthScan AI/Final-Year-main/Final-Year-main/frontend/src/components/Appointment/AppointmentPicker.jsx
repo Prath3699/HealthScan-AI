@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import AppointmentDateTimeCard from "./AppointmentDateTimeCard";
 import { ModalBody, ModalHeader } from "flowbite-react";
 import { Modal } from "flowbite-react";
@@ -18,22 +18,8 @@ const AppointmentPicker = ({ doctorId }) => {
   const [dateSlotLoader, setDateSlotLoader] = useState(false);
   const [error, setError] = useState(null);
 
-  // Fetch doctor's available days
-  useEffect(() => {
-    if (doctorId) {
-      fetchDoctorAvailability();
-    }
-  }, [doctorId]);
-
-  // Fetch available time slots when a day is selected
-  useEffect(() => {
-    if (selectedDay && doctorId) {
-      fetchAvailableSlots(selectedDay);
-    }
-  }, [selectedDay, doctorId]);
-
   // Fetch doctor's working days
-  const fetchDoctorAvailability = async () => {
+  const fetchDoctorAvailability = useCallback(async () => {
     try {
       setLoadingSlots(true);
       setError(null);
@@ -61,7 +47,21 @@ const AppointmentPicker = ({ doctorId }) => {
       setLoadingSlots(false);
       setDateSlotLoader(false);
     }
-  };
+  }, [doctorId]);
+
+  // Fetch doctor's available days
+  useEffect(() => {
+    if (doctorId) {
+      fetchDoctorAvailability();
+    }
+  }, [doctorId, fetchDoctorAvailability]);
+
+  // Fetch available time slots when a day is selected
+  useEffect(() => {
+    if (selectedDay && doctorId) {
+      fetchAvailableSlots(selectedDay);
+    }
+  }, [selectedDay, doctorId, fetchAvailableSlots]);
 
   // Remove duplicate days from available slots
   const removeDuplicateDays = (slots) => {
@@ -79,7 +79,7 @@ const AppointmentPicker = ({ doctorId }) => {
   };
 
   // Fetch available time slots for selected day
-  const fetchAvailableSlots = async (day) => {
+  const fetchAvailableSlots = useCallback(async (day) => {
     try {
       setLoadingSlots(true);
       setError(null);
@@ -119,7 +119,7 @@ const AppointmentPicker = ({ doctorId }) => {
     } finally {
       setLoadingSlots(false);
     }
-  };
+  }, [doctorId]);
 
   // Handle time slot selection
   const handleTimeSelect = (time) => {

@@ -1,6 +1,6 @@
 import { useSelector } from "react-redux";
 import { selectAuthUser } from "../redux/selectors";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import DoctorIntro from "../components/Appointment/DoctorIntro";
 import api from "../api/client";
 import { useNavigate, useParams } from "react-router-dom";
@@ -31,8 +31,8 @@ const View = () => {
       toast("Please login to book an appointment !");
       navigate("/");
     }
-  }, []);
-  const fetchDoctorDetails = async () => {
+  }, [patientId, navigate]);
+  const fetchDoctorDetails = useCallback(async () => {
     try {
       setLoading(true);
       const res = await api.get(`/api/doctors/${doctorId}`);
@@ -48,12 +48,12 @@ const View = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [doctorId]);
   console.log(doctorDetails);
 
   useEffect(() => {
     fetchDoctorDetails();
-  }, [doctorId]);
+  }, [fetchDoctorDetails]);
 
   if (loading) {
     return (

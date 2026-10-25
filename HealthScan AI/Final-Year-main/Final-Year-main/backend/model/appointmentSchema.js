@@ -9,6 +9,8 @@ const appointmentSchema = new mongoose.Schema(
     endTime: { type: Date }, // changed from String → Date
     status: { type: String, enum: ["Scheduled", "Completed", "Cancelled"] },
     reason: String,
+    // Set once the appointment reminder email has been sent (idempotency flag).
+    reminded: { type: Boolean, default: false },
 
     report: { type: mongoose.Schema.Types.ObjectId, ref: "Report" },
   },

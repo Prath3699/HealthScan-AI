@@ -1,6 +1,6 @@
 import { useSelector } from "react-redux";
 import { selectAuthUser } from "../redux/selectors";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import PatientAppointments from "../components/PatientDashboard/PatientAppointments";
 import HeaderCard from "../components/DoctorDashboard/HeaderCard";
 import {
@@ -66,7 +66,7 @@ const PatientDashboard = () => {
     }
   };
 
-  const fetchDetails = async () => {
+  const fetchDetails = useCallback(async () => {
     if (!patientId) {
       return;
     }
@@ -83,11 +83,11 @@ const PatientDashboard = () => {
       console.log(error);
       toast(error.message);
     }
-  };
+  }, [patientId, navigate]);
 
   useEffect(() => {
     patientId && fetchDetails();
-  }, [patientId]);
+  }, [patientId, fetchDetails]);
 
   return (
     <div className="flex flex-col md:px-3 lg:px-5 rounded-2xl">

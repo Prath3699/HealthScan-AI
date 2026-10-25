@@ -4,6 +4,16 @@ const Patient = require("../model/patientSchema");
 const Unavailability = require("../model/unavailablitySchema");
 const dayjs = require("dayjs");
 const ApiError = require("../utils/ApiError");
+const logger = require("../utils/logger");
+
+// Reset the reminder idempotency flag when an appointment is moved or revived
+// so the new slot also gets a reminder. (Cancellation keeps it as-is.)
+const rescheduleAwareSave = async (appointment) => {
+  if (appointment.isModified("time") && appointment.reminded) {
+    appointment.reminded = false;
+  }
+  await appointment.save();
+};
 
 const APPOINTMENT_DURATION_MINUTES = 30;
 
@@ -265,18 +275,71 @@ const getAppointmentsforthatday = async (req, res) => {
   const start = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0));
   const end = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 23, 59, 59, 999));
 
-  const appointments = await Appointment.find({
+  // Pagination (safe defaults & caps)
+  const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+  const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 100);
+
+  const filter = {
     date: { $gte: start, $lte: end },
     $or: [{ doctorId: id }, { patientId: id }],
-  })
-    .populate("patientId")
-    .populate("doctorId");
+  };
+
+  const [total, appointments] = await Promise.all([
+    Appointment.countDocuments(filter),
+    Appointment.find(filter)
+      .sort({ time: 1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .populate("patientId")
+      .populate("doctorId"),
+  ]);
 
   return res.status(200).json({
     success: true,
     count: appointments.length,
+    total, // full match count for pagination UI
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit),
     appointments,
     message: "Appointments fetched successfully",
+  });
+};
+
+/**
+ * GET /api/appointment/upcoming?page=&limit=
+ * Paginated list of the caller's future Scheduled appointments.
+ */
+const getUpcomingForUser = async (req, res) => {
+  const id = req.user && req.user.id;
+
+  const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+  const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 100);
+
+  const filter = {
+    $or: [{ doctorId: id }, { patientId: id }],
+    status: "Scheduled",
+    time: { $gte: new Date() },
+  };
+
+  const [total, appointments] = await Promise.all([
+    Appointment.countDocuments(filter),
+    Appointment.find(filter)
+      .sort({ time: 1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .populate("patientId")
+      .populate("doctorId"),
+  ]);
+
+  return res.status(200).json({
+    success: true,
+    count: appointments.length,
+    total,
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit),
+    appointments,
   });
 };
 
@@ -286,4 +349,5 @@ module.exports = {
   getAppointmentById,
   getAvailableSlots,
   getAppointmentsforthatday,
+  getUpcomingForUser,
 };

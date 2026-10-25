@@ -1,4 +1,5 @@
 const request = require("supertest");
+const jwt = require("jsonwebtoken");
 const app = require("../server");
 const Doctor = require("../model/doctorSchema");
 
@@ -92,5 +93,93 @@ describe("Auth & security", () => {
     const res = await request(app).get("/api/nope");
     expect(res.status).toBe(404);
     expect(res.body.success).toBe(false);
+  });
+
+  describe("refresh-token rotation (httpOnly cookie)", () => {
+    const getCookie = (res) => {
+      const raw = res.headers["set-cookie"] || [];
+      const found = raw.find((c) => c.startsWith("refreshToken="));
+      return found ? found.split(";")[0] : undefined;
+    };
+
+    test("access token is short-lived and carries id+role", async () => {
+      const res = await request(app)
+        .post("/api/login")
+        .send({ email: "dr@test.com", password: "password123", role: "Doctor" });
+      const payload = jwt.verify(res.body.token, process.env.JWT_SECRET);
+      expect(payload.role).toBe("Doctor");
+      // Default expiry must be <= 1h (was 30d before hardening).
+      expect(payload.exp - payload.iat).toBeLessThanOrEqual(3600);
+    });
+
+    test("login sets an httpOnly refresh cookie that can mint new access tokens", async () => {
+      const login = await request(app)
+        .post("/api/login")
+        .send({ email: "dr@test.com", password: "password123", role: "Doctor" });
+
+      const cookie = getCookie(login);
+      expect(cookie).toBeDefined();
+      expect(login.headers["set-cookie"].join()).toMatch(/HttpOnly/i);
+      expect(login.headers["set-cookie"].join()).toMatch(/Path=\/api\/auth/i);
+
+      const refreshed = await request(app)
+        .post("/api/auth/refresh")
+        .set("Cookie", cookie);
+      expect(refreshed.status).toBe(200);
+      expect(refreshed.body.token).toBeDefined();
+      const decoded = jwt.verify(refreshed.body.token, process.env.JWT_SECRET);
+      expect(decoded.role).toBe("Doctor");
+      // Rotation: a fresh cookie comes back with the response.
+      const rotated = getCookie(refreshed);
+      expect(rotated).toBeDefined();
+      expect(rotated).not.toBe(cookie);
+    });
+
+    test("replaying a rotated (used) refresh token revokes the family", async () => {
+      const login = await request(app)
+        .post("/api/login")
+        .send({ email: "dr@test.com", password: "password123", role: "Doctor" });
+      const cookie = getCookie(login);
+
+      const first = await request(app)
+        .post("/api/auth/refresh")
+        .set("Cookie", cookie);
+      expect(first.status).toBe(200);
+      const rotated = getCookie(first);
+
+      // Reuse of the ORIGINAL token -> 401 and family killed.
+      const replay = await request(app)
+        .post("/api/auth/refresh")
+        .set("Cookie", cookie);
+      expect(replay.status).toBe(401);
+
+      // Even the legitimate rotated token is now revoked (family deleted).
+      const after = await request(app)
+        .post("/api/auth/refresh")
+        .set("Cookie", rotated);
+      expect(after.status).toBe(401);
+    });
+
+    test("logout clears the cookie and invalidates it", async () => {
+      const login = await request(app)
+        .post("/api/login")
+        .send({ email: "dr@test.com", password: "password123", role: "Doctor" });
+      const cookie = getCookie(login);
+
+      const out = await request(app)
+        .post("/api/auth/logout")
+        .set("Cookie", cookie);
+      expect(out.status).toBe(200);
+
+      const reuse = await request(app)
+        .post("/api/auth/refresh")
+        .set("Cookie", cookie);
+      expect(reuse.status).toBe(401);
+    });
+
+    test("refresh without a cookie is rejected", async () => {
+      const res = await request(app).post("/api/auth/refresh");
+      expect(res.status).toBe(401);
+    });
   });
 });

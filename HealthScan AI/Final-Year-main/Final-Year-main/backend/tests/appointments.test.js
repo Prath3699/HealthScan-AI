@@ -1,0 +1,171 @@
+const request = require("supertest");
+const app = require("../server");
+const Doctor = require("../model/doctorSchema");
+const Patient = require("../model/patientSchema");
+const Appointment = require("../model/appointmentSchema");
+
+// Build a doctor available Mon-Sun 09:00-17:00 and a patient.
+const seed = async () => {
+  const days = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+  const d = await Doctor.create({
+    name: "Slot Doctor",
+    email: "slot.doc@test.com",
+    password: "password123",
+    age: 45,
+    specialization: ["General"],
+    experience: 12,
+    availableSlots: days.map((day) => ({ day, from: "09:00", to: "17:00" })),
+  });
+  const p = await Patient.create({
+    name: "Slot Patient",
+    email: "slot.pat@test.com",
+    password: "password123",
+  });
+  return { doctor: d, patient: p };
+};
+
+const bookPayload = (doctor, patient, fromIso, toIso) => ({
+  doctorId: String(doctor._id),
+  patientId: String(patient._id),
+  day: { from: fromIso },
+  time: { from: fromIso, to: toIso },
+  reason: "checkup",
+});
+
+describe("Appointments", () => {
+  let doctor, patient, token;
+
+  beforeAll(async () => {
+    ({ doctor, patient } = await seed());
+    const login = await request(app)
+      .post("/api/login")
+      .send({ email: "slot.doc@test.com", password: "password123", role: "Doctor" });
+    token = login.body.token;
+  });
+
+  test("available slots are generated inside working hours", async () => {
+    const res = await request(app)
+      .get("/api/appointment/available-slots")
+      .query({ doctorId: String(doctor._id), date: "2026-11-02" }); // Monday
+    expect(res.status).toBe(200);
+    expect(res.body.totalSlots).toBe(16); // 8h / 30min
+    expect(res.body.availableCount).toBe(16);
+    expect(res.body.dayOfWeek).toBe("Monday");
+  });
+
+  test("no slots on a non-working day", async () => {
+    const limited = await Doctor.create({
+      name: "Weekday Only",
+      email: "weekday@test.com",
+      password: "password123",
+      age: 40,
+      availableSlots: [{ day: "Monday", from: "09:00", to: "10:00" }],
+    });
+    const res = await request(app)
+      .get("/api/appointment/available-slots")
+      .query({ doctorId: String(limited._id), date: "2026-11-03" }); // Tuesday
+    expect(res.status).toBe(200);
+    expect(res.body.availableSlots).toHaveLength(0);
+  });
+
+  test("booking requires authentication", async () => {
+    const res = await request(app).post("/api/appointment/book").send({});
+    expect(res.status).toBe(401);
+  });
+
+  test("valid booking succeeds and marks the slot taken", async () => {
+    const from = new Date(Date.UTC(2026, 10, 2, 9, 30)).toISOString();
+    const to = new Date(Date.UTC(2026, 10, 2, 10, 0)).toISOString();
+    const res = await request(app)
+      .post("/api/appointment/book")
+      .set("Authorization", `Bearer ${token}`)
+      .send(bookPayload(doctor, patient, from, to));
+    expect(res.status).toBe(201);
+    expect(res.body.appointment.status).toBe("Scheduled");
+
+    const slots = await request(app)
+      .get("/api/appointment/available-slots")
+      .query({ doctorId: String(doctor._id), date: "2026-11-02" });
+    expect(slots.body.availableCount).toBe(15);
+  });
+
+  test("overlapping booking is rejected with 409", async () => {
+    const from = new Date(Date.UTC(2026, 10, 2, 9, 45)).toISOString();
+    const to = new Date(Date.UTC(2026, 10, 2, 10, 15)).toISOString();
+    const res = await request(app)
+      .post("/api/appointment/book")
+      .set("Authorization", `Bearer ${token}`)
+      .send(bookPayload(doctor, patient, from, to));
+    expect(res.status).toBe(409);
+  });
+
+  test("booking outside working hours is rejected with 400", async () => {
+    const from = new Date(Date.UTC(2026, 10, 2, 19, 0)).toISOString();
+    const to = new Date(Date.UTC(2026, 10, 2, 19, 30)).toISOString();
+    const res = await request(app)
+      .post("/api/appointment/book")
+      .set("Authorization", `Bearer ${token}`)
+      .send(bookPayload(doctor, patient, from, to));
+    expect(res.status).toBe(400);
+  });
+
+  test("invalid ids fail validation with 400", async () => {
+    const res = await request(app)
+      .post("/api/appointment/book")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ doctorId: "bad", patientId: "bad", time: { from: "x", to: "y" }, day: { from: "z" } });
+    expect(res.status).toBe(400);
+  });
+
+  test("third party cannot view or cancel an appointment", async () => {
+    const appt = await Appointment.findOne({ doctorId: doctor._id });
+    const strangerLogin = await request(app)
+      .post("/api/patients/add")
+      .send({ name: "Stranger", email: "stranger@test.com", password: "password123" });
+    expect(strangerLogin.status).toBe(201);
+    const stranger = await request(app)
+      .post("/api/login")
+      .send({ email: "stranger@test.com", password: "password123", role: "Patient" });
+
+    const view = await request(app)
+      .get(`/api/appointment/${appt._id}`)
+      .set("Authorization", `Bearer ${stranger.body.token}`);
+    expect(view.status).toBe(403);
+
+    const del = await request(app)
+      .delete(`/api/appointment/cancel/${appt._id}`)
+      .set("Authorization", `Bearer ${stranger.body.token}`);
+    expect(del.status).toBe(403);
+  });
+
+  test("involved user can view and cancel; cancel preserves history", async () => {
+    const appt = await Appointment.findOne({ doctorId: doctor._id });
+    const view = await request(app)
+      .get(`/api/appointment/${appt._id}`)
+      .set("Authorization", `Bearer ${token}`);
+    expect(view.status).toBe(200);
+
+    const del = await request(app)
+      .delete(`/api/appointment/cancel/${appt._id}`)
+      .set("Authorization", `Bearer ${token}`);
+    expect(del.status).toBe(200);
+
+    const fresh = await Appointment.findById(appt._id);
+    expect(fresh.status).toBe("Cancelled"); // soft delete, not removed
+  });
+
+  test("day query returns appointments for the actor only", async () => {
+    const patLogin = await request(app)
+      .post("/api/login")
+      .send({ email: "slot.pat@test.com", password: "password123", role: "Patient" });
+    const res = await request(app)
+      .get("/api/appointment/day")
+      .query({ date: "2026-11-02" })
+      .set("Authorization", `Bearer ${patLogin.body.token}`);
+    expect(res.status).toBe(200);
+    expect(res.body.count).toBeGreaterThanOrEqual(1);
+    for (const a of res.body.appointments) {
+      expect(String(a.patientId._id ?? a.patientId)).toBe(String(patient._id));
+    }
+  });
+});

@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { KeyRound, Mail, User, Eye, EyeOff } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { loginUser } from "../../redux/authSlice";
-import { selectAuth } from "../../redux/rootSlice";
+import { selectAuthUser } from "../../redux/selectors";
 import { toast } from "react-toastify";
 
 const Login = () => {
@@ -19,7 +19,7 @@ const Login = () => {
     role: "Patient",
   });
 
-  const { user } = useSelector(selectAuth);
+  const user = useSelector(selectAuthUser);
 
   // If already logged in, redirect to dashboard
   useEffect(() => {

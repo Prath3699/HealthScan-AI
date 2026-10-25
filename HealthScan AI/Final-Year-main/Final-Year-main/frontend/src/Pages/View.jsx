@@ -1,5 +1,5 @@
 import { useSelector } from "react-redux";
-import { selectAuth } from "../redux/rootSlice";
+import { selectAuthUser } from "../redux/selectors";
 import React, { useEffect, useState } from "react";
 import DoctorIntro from "../components/Appointment/DoctorIntro";
 import api from "../api/client";
@@ -12,7 +12,7 @@ const View = () => {
   const { doctorId } = useParams();
   const [loading, setLoading] = useState(true);
   const [doctorDetails, setDoctorDetails] = useState(null);
-  const { user: reduxUser } = useSelector(selectAuth);
+  const reduxUser = useSelector(selectAuthUser);
   // Redux is the source of truth; fall back to storage only on a fresh page load.
   const userData =
     reduxUser ??

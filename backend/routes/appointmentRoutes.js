@@ -1,6 +1,7 @@
 const {
   bookAppointment,
   cancelAppointment,
+  rescheduleAppointment,
   getAppointmentById,
   getAvailableSlots,
   getAppointmentsforthatday,
@@ -8,7 +9,8 @@ const {
 } = require("../controllers/appointmentController");
 
 const express = require("express");
-const { body } = require("express-validator");
+const {
+  body } = require("express-validator");
 const validate = require("../middleware/validate");
 const asyncHandler = require("../utils/asyncHandler");
 const { protect } = require("../middleware/roleAuth");
@@ -35,6 +37,17 @@ router.post(
 );
 
 router.delete("/cancel/:id", asyncHandler(cancelAppointment));
+
+router.patch(
+  "/reschedule/:id",
+  validate([
+    body("time.from").isISO8601().withMessage("time.from must be an ISO date"),
+    body("time.to").isISO8601().withMessage("time.to must be an ISO date"),
+    body("day.from").isISO8601().withMessage("day.from must be an ISO date"),
+  ]),
+  asyncHandler(rescheduleAppointment)
+);
+
 router.get("/day", asyncHandler(getAppointmentsforthatday));
 router.get("/:id", asyncHandler(getAppointmentById));
 

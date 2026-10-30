@@ -4,7 +4,6 @@ const Patient = require("../model/patientSchema");
 const Unavailability = require("../model/unavailablitySchema");
 const dayjs = require("dayjs");
 const ApiError = require("../utils/ApiError");
-const logger = require("../utils/logger");
 
 // Reset the reminder idempotency flag when an appointment is moved or revived
 // so the new slot also gets a reminder. (Cancellation keeps it as-is.)
@@ -128,6 +127,94 @@ const cancelAppointment = async (req, res) => {
   }
 
   return res.status(200).json({ message: "Appointment cancelled successfully" });
+};
+
+/**
+ * PATCH /api/appointment/reschedule/:id
+ * Move an existing Scheduled appointment to a new slot. Re-runs the same
+ * availability/conflict checks as booking, keeps doctor/patient cross-refs
+ * in sync, and resets the reminder flag via rescheduleAwareSave so the new
+ * slot also gets a reminder email.
+ */
+const rescheduleAppointment = async (req, res) => {
+  const id = req.params.id;
+  const { day, time } = req.body;
+
+  const startTime = time?.from;
+  const endTime = time?.to;
+  const appointmentDate = day?.from;
+  if (!startTime || !endTime || !appointmentDate) {
+    throw new ApiError(400, "Invalid time or day data");
+  }
+
+  const appointment = await Appointment.findById(id);
+  if (!appointment) throw new ApiError(404, "Appointment not found");
+  if (appointment.status !== "Scheduled") {
+    throw new ApiError(400, `Cannot reschedule a ${appointment.status.toLowerCase()} appointment`);
+  }
+
+  // Only the involved doctor or patient may reschedule.
+  const actor = String(req.user.id);
+  const involved =
+    actor === String(appointment.doctorId) ||
+    actor === String(appointment.patientId);
+  if (!involved) throw new ApiError(403, "Not authorized to reschedule this appointment");
+
+  const appointmentDateTime = dayjs(startTime);
+  const appointmentEndTime = dayjs(endTime);
+  if (!appointmentEndTime.isAfter(appointmentDateTime)) {
+    throw new ApiError(400, "End time must be after start time");
+  }
+
+  const doctor = await Doctor.findById(appointment.doctorId);
+  if (!doctor) throw new ApiError(404, "Doctor not found");
+
+  // Check the doctor is working on that weekday and the slot is within hours.
+  const dayOfWeek = appointmentDateTime.format("dddd");
+  const availableSlot = doctor.availableSlots.find((slot) => slot.day === dayOfWeek);
+  if (!availableSlot) throw new ApiError(400, "Doctor not available on this day");
+
+  const dayBase = dayjs(appointmentDate).startOf("day");
+  const from = parseHHmm(availableSlot.from);
+  const to = parseHHmm(availableSlot.to);
+  const slotFrom = dayBase.hour(from.hour).minute(from.minute).second(0);
+  const slotTo = dayBase.hour(to.hour).minute(to.minute).second(0);
+  if (
+    appointmentDateTime.isBefore(slotFrom) ||
+    appointmentEndTime.isAfter(slotTo)
+  ) {
+    throw new ApiError(400, "Requested time is outside doctor's available hours");
+  }
+
+  // Conflict check against other (non-cancelled) appointments of this doctor.
+  const conflicting = await Appointment.findOne({
+    _id: { $ne: id },
+    doctorId: doctor._id,
+    status: { $in: ["Scheduled"] },
+    time: { $lt: appointmentEndTime.toDate() },
+    endTime: { $gt: appointmentDateTime.toDate() },
+  });
+  if (conflicting) throw new ApiError(409, "Time slot already booked");
+
+  // Blocked by a doctor unavailability window (lunch break, leave, etc.)?
+  const blocked = await Unavailability.findOne({
+    doctorId: doctor._id,
+    isActive: true,
+    startTime: { $lt: appointmentEndTime.toDate() },
+    endTime: { $gt: appointmentDateTime.toDate() },
+  });
+  if (blocked) throw new ApiError(409, "Doctor is unavailable during this time");
+
+  // Apply the new slot (time/endTime/date), resetting the reminder flag.
+  appointment.time = appointmentDateTime.toDate();
+  appointment.endTime = appointmentEndTime.toDate();
+  appointment.date = dayjs(appointmentDate).startOf("day").toDate();
+  await rescheduleAwareSave(appointment);
+
+  return res.status(200).json({
+    message: "Appointment rescheduled successfully",
+    appointment,
+  });
 };
 
 const getAvailableSlots = async (req, res) => {
@@ -346,6 +433,7 @@ const getUpcomingForUser = async (req, res) => {
 module.exports = {
   bookAppointment,
   cancelAppointment,
+  rescheduleAppointment,
   getAppointmentById,
   getAvailableSlots,
   getAppointmentsforthatday,

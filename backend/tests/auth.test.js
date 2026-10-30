@@ -1,7 +1,6 @@
 const request = require("supertest");
 const jwt = require("jsonwebtoken");
 const app = require("../server");
-const Doctor = require("../model/doctorSchema");
 
 describe("Auth & security", () => {
   const doctorPayload = {

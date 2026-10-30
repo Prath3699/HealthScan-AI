@@ -178,6 +178,93 @@ describe("Appointments", () => {
     expect(fresh.status).toBe("Cancelled"); // soft delete, not removed
   });
 
+  test("reschedule moves an appointment to a new slot", async () => {
+    const from = new Date(Date.UTC(2026, 10, 9, 9, 30)).toISOString(); // Monday
+    const to = new Date(Date.UTC(2026, 10, 9, 10, 0)).toISOString();
+    const book = await request(app)
+      .post("/api/appointment/book")
+      .set("Authorization", `Bearer ${token}`)
+      .send(bookPayload(doctor, patientId, from, to));
+    expect(book.status).toBe(201);
+    const apptId = book.body.appointment._id;
+
+    const newFrom = new Date(Date.UTC(2026, 10, 9, 14, 0)).toISOString();
+    const newTo = new Date(Date.UTC(2026, 10, 9, 14, 30)).toISOString();
+    const res = await request(app)
+      .patch(`/api/appointment/reschedule/${apptId}`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ day: { from: newFrom }, time: { from: newFrom, to: newTo } });
+    expect(res.status).toBe(200);
+
+    const fresh = await Appointment.findById(apptId);
+    expect(new Date(fresh.time).toISOString()).toBe(newFrom);
+    expect(new Date(fresh.endTime).toISOString()).toBe(newTo);
+    expect(fresh.status).toBe("Scheduled");
+  });
+
+  test("reschedule into an already-booked slot is rejected with 409", async () => {
+    const clashFrom = new Date(Date.UTC(2026, 10, 16, 9, 30)).toISOString();
+    const clashTo = new Date(Date.UTC(2026, 10, 16, 10, 0)).toISOString();
+    const taken = await request(app)
+      .post("/api/appointment/book")
+      .set("Authorization", `Bearer ${token}`)
+      .send(bookPayload(doctor, patientId, clashFrom, clashTo));
+    expect(taken.status).toBe(201);
+
+    const movableFrom = new Date(Date.UTC(2026, 10, 16, 11, 0)).toISOString();
+    const movableTo = new Date(Date.UTC(2026, 10, 16, 11, 30)).toISOString();
+    const movable = await request(app)
+      .post("/api/appointment/book")
+      .set("Authorization", `Bearer ${token}`)
+      .send(bookPayload(doctor, patientId, movableFrom, movableTo));
+    expect(movable.status).toBe(201);
+
+    const res = await request(app)
+      .patch(`/api/appointment/reschedule/${movable.body.appointment._id}`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ day: { from: clashFrom }, time: { from: clashFrom, to: clashTo } });
+    expect(res.status).toBe(409);
+  });
+
+  test("reschedule outside working hours is rejected with 400", async () => {
+    const appt = await Appointment.findOne({ doctorId: doctor._id, status: "Scheduled" });
+    expect(appt).not.toBeNull();
+    const lateFrom = new Date(Date.UTC(2026, 10, 18, 19, 0)).toISOString();
+    const lateTo = new Date(Date.UTC(2026, 10, 18, 19, 30)).toISOString();
+    const res = await request(app)
+      .patch(`/api/appointment/reschedule/${appt._id}`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ day: { from: lateFrom }, time: { from: lateFrom, to: lateTo } });
+    expect(res.status).toBe(400);
+  });
+
+  test("third party cannot reschedule an appointment", async () => {
+    const appt = await Appointment.findOne({ doctorId: doctor._id, status: "Scheduled" });
+    expect(appt).not.toBeNull();
+    const stranger = await request(app)
+      .post("/api/login")
+      .send({ email: "stranger@test.com", password: "password123", role: "Patient" });
+    const from = new Date(Date.UTC(2026, 10, 23, 9, 30)).toISOString();
+    const to = new Date(Date.UTC(2026, 10, 23, 10, 0)).toISOString();
+    const res = await request(app)
+      .patch(`/api/appointment/reschedule/${appt._id}`)
+      .set("Authorization", `Bearer ${stranger.body.token}`)
+      .send({ day: { from }, time: { from, to } });
+    expect(res.status).toBe(403);
+  });
+
+  test("cancelled appointments cannot be rescheduled", async () => {
+    const cancelled = await Appointment.findOne({ status: "Cancelled" });
+    expect(cancelled).not.toBeNull();
+    const from = new Date(Date.UTC(2026, 10, 24, 9, 30)).toISOString();
+    const to = new Date(Date.UTC(2026, 10, 24, 10, 0)).toISOString();
+    const res = await request(app)
+      .patch(`/api/appointment/reschedule/${cancelled._id}`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ day: { from }, time: { from, to } });
+    expect(res.status).toBe(400);
+  });
+
   test("day query returns appointments for the actor only", async () => {
     const patLogin = await request(app)
       .post("/api/login")

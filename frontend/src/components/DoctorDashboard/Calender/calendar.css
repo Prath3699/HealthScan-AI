@@ -1,0 +1,125 @@
+.calendar-wrapper {
+  padding: 20px;
+  min-height: 100vh;
+}
+
+.calendar-box {
+  background: white;
+  border-radius: 16px;
+
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  padding: 16px;
+  max-width: 1000px;
+  /* margin: 0 auto; */
+}
+
+.calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  color: #374151;
+}
+
+.calendar-header h2 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #7a7a7a;
+}
+
+.calendar-container {
+  height: 75vh;
+  /* removed overflow-y so no extra scrollbar beside time axis */
+}
+
+/* FullCalendar Styling */
+.calendar-container .fc {
+  background: white;
+  border-radius: 12px;
+  border: none;
+}
+
+.calendar-container .fc-timegrid-slot {
+  height: 70px !important; /* taller slots */
+  background: white;
+  border-top: 1px solid #f3f4f6;
+}
+
+.calendar-container .fc-timegrid-axis {
+  background: #fafafa;
+  border-right: 1px solid #e5e7eb;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.calendar-container .fc-event {
+  border-radius: 10px !important;
+  box-shadow: 0 3px 8px rgba(125, 39, 39, 0.1) !important;
+  margin: 2px 4px !important;
+}
+
+.custom-event-content {
+  padding: 6px 10px;
+  border-radius: 10px;
+}
+
+.event-title {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.event-doctor {
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+.calendar-container .fc-timegrid-now-indicator-line {
+  border-color: #ef4444;
+  border-width: 2px;
+}
+
+/* ✅ Scrollbar Styling (applied to FullCalendar's scroller, not container) */
+.calendar-container .fc-scroller::-webkit-scrollbar {
+  width: 8px;
+}
+
+.calendar-container .fc-scroller::-webkit-scrollbar-track {
+  background: #f3f4f6;
+  border-radius: 8px;
+}
+
+.calendar-container .fc-scroller::-webkit-scrollbar-thumb {
+  background: #9ca3af;
+  border-radius: 8px;
+}
+
+.calendar-container .fc-scroller::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
+/* 🚫 Hide empty horizontal scrollbar in day row */
+.calendar-container .fc-scrollgrid-section-header .fc-scroller {
+  overflow-x: hidden !important;
+  overflow-y: hidden !important;
+}
+
+/* Ensure only the event area scrolls */
+.calendar-container .fc-scrollgrid-section-body .fc-scroller {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+/* Firefox */
+.calendar-container .fc-scroller {
+  scrollbar-width: thin;
+  scrollbar-color: #6b7280 #f3f4f6;
+}
+
+@media (max-width: 640px) {
+  .calendar-wrapper {
+    padding: 0px;
+  }
+}

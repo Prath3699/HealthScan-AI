@@ -8,7 +8,7 @@ import api from "../../api/client";
 import dayjs from "dayjs";
 import { Loader } from "lucide-react";
 
-const AppointmentPicker = ({ doctorId }) => {
+const AppointmentPicker = ({ doctorId, patientId }) => {
   const [openModal, setOpenModal] = useState(false);
   const [availableSlot, setAvailableSlot] = useState([]);
   const [timeSlots, setTimeSlots] = useState([]);
@@ -240,7 +240,7 @@ const AppointmentPicker = ({ doctorId }) => {
               selectedTime={selectedTime}
               selectedDay={selectedDay}
               doctorId={doctorId}
-              patientId={"68888dfb86635ac8bdd3e4a3"}
+              patientId={patientId}
               onSuccess={() => {
                 setOpenModal(false);
                 setSelectedTime(null);

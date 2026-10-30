@@ -17,6 +17,7 @@ const loginRoutes = require("./routes/loginRoutes");
 const authRoutes = require("./routes/authRoutes");
 const reportRoutes = require("./routes/reportRoutes");
 const predictionRoutes = require("./routes/predictionRoutes");
+const statsRoutes = require("./routes/statsRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 3003;
@@ -98,6 +99,7 @@ app.use("/api/login", loginRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/predict", predictionRoutes);
+app.use("/api/stats", statsRoutes);
 
 app.get("/healthz", (req, res) => {
   res.status(200).json({

@@ -50,6 +50,7 @@ function App() {
                 }
               />
               <Route path="/view/doctors/:doctorId" element={<View />} />
+              <Route path="/appointment/:doctorId" element={<Appointment />} />
               <Route path="/search" element={<SearchPage />} />
               <Route path="/disease" element={<DiseaseManagement />} />
               <Route path="/" element={<HomePage />} />

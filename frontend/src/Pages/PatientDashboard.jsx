@@ -3,43 +3,15 @@ import { selectAuthUser } from "../redux/selectors";
 import React, { useCallback, useEffect, useState } from "react";
 import PatientAppointments from "../components/PatientDashboard/PatientAppointments";
 import HeaderCard from "../components/DoctorDashboard/HeaderCard";
-import {
-  Calendar,
-  FileText,
-  History,
-  Stethoscope,
-} from "lucide-react/dist/cjs/lucide-react";
+import { Calendar, FileText, History, Stethoscope } from "lucide-react/dist/cjs/lucide-react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/client";
 import PatientViewCard from "../components/Card/PatientViewCard";
 import { toast } from 'react-toastify';
 
-const patientCards = [
-  {
-    number: "12",
-    description: "Total number of Upcoming Appointments",
-    icon: Calendar,
-    iconBg: "bg-yellow-100",
-    iconColor: "text-yellow-600",
-  },
-  {
-    number: "45",
-    description: "Total number of all the past Appointments",
-    icon: History,
-    iconBg: "bg-blue-100",
-    iconColor: "text-blue-600",
-  },
-  {
-    number: "8",
-    description: "Total numbers of available medical Records",
-    icon: FileText,
-    iconBg: "bg-green-100",
-    iconColor: "text-green-600",
-  },
-];
-
 const PatientDashboard = () => {
   const [patientDetails, setPatientDetails] = useState(null);
+  const [stats, setStats] = useState(null);
   const navigate = useNavigate();
   const reduxUser = useSelector(selectAuthUser);
   // Redux is the source of truth; fall back to storage only on a fresh page load.
@@ -88,6 +60,46 @@ const PatientDashboard = () => {
   useEffect(() => {
     patientId && fetchDetails();
   }, [patientId, fetchDetails]);
+
+  // Real dashboard counts (upcoming/past appointments + medical records).
+  const fetchStats = useCallback(async () => {
+    try {
+      const res = await api.get("/api/stats/summary");
+      if (res.data?.success) {
+        setStats(res.data.stats);
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
+
+  const patientCards = [
+    {
+      number: stats ? String(stats.upcoming) : "–",
+      description: "Total number of Upcoming Appointments",
+      icon: Calendar,
+      iconBg: "bg-yellow-100",
+      iconColor: "text-yellow-600",
+    },
+    {
+      number: stats ? String(stats.past) : "–",
+      description: "Total number of all the past Appointments",
+      icon: History,
+      iconBg: "bg-blue-100",
+      iconColor: "text-blue-600",
+    },
+    {
+      number: stats ? String(stats.reports) : "–",
+      description: "Total numbers of available medical Records",
+      icon: FileText,
+      iconBg: "bg-green-100",
+      iconColor: "text-green-600",
+    },
+  ];
 
   return (
     <div className="flex flex-col md:px-3 lg:px-5 rounded-2xl">

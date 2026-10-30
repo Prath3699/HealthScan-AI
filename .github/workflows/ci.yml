@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  backend:
+    name: Backend (lint + tests, MongoDB service)
+    runs-on: ubuntu-latest
+    # Real MongoDB service container — used by any DB-dependent integration
+    # tests; the default Jest suite still runs on mongodb-memory-server so
+    # both paths are exercised in CI.
+    services:
+      mongodb:
+        image: mongo:7.0
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.adminCommand({ ping: 1 })'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - name: Lint
+        run: npm run lint --if-present
+      - name: Test (in-memory MongoDB via mongodb-memory-server)
+        run: npm test
+        env:
+          JWT_SECRET: ci-test-secret
+      - name: Smoke check against service MongoDB
+        # Verifies the app can connect to a real mongod (service container),
+        # catching driver/URI regressions that the in-memory server hides.
+        run: |
+          node -e "const mongoose = require('mongoose');
+          mongoose.connect('mongodb://127.0.0.1:27017/healthscan-ci')
+            .then(() => { console.log('service MongoDB reachable'); return mongoose.disconnect(); })
+            .catch((e) => { console.error(e.message); process.exit(1); });"
+
+  frontend:
+    name: Frontend (lint + tests + build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: Lint
+        run: npm run lint --if-present
+      - name: Unit tests (Vitest)
+        run: npm test
+      - name: Build
+        run: npm run build
